@@ -1,8 +1,15 @@
 import math
+import os
 import numpy as np
+import platform
 import tkinter as tk
-from PIL import Image, ImageFont, ImageDraw
+from tkinter import filedialog, colorchooser
+from PIL import Image, ImageTk, ImageFont, ImageDraw
+from datetime import datetime
 
+
+new_BG_tuple = None
+new_FG_tuple = None
 PIL_GRAYSCALE = 'L'
 PIL_WIDTH_INDEX = 0
 PIL_HEIGHT_INDEX = 3
@@ -11,7 +18,7 @@ GSCALE2 = '@%#*+=-:. '
 COMMON_MONO_FONT_FILENAMES = [
     'DejaVuSansMono.ttf',  # Linux
     '/System/Library/Fonts/Menlo.ttc',   # MacOS, I think
-    'Consola.ttf',         # Windows, I think
+    'C:/Windows/Fonts/consola.ttf',         # Windows, I think
 ]
 
 def getAverageL(image):
@@ -33,7 +40,10 @@ def covertImageToAscii(fileName, cols, scale, moreLevels):
     """
     # declare globals
     # global gscale1, gscale2
-    scale = 0.475
+    if platform.system() == 'Darwin':
+        scale = 0.475
+    elif platform.system() == 'Windows':
+        scale = 0.572
     # open image and convert to grayscale
     image = Image.open(fileName).convert('L')
 
@@ -143,8 +153,9 @@ def textfile_to_image(textfile_path, RGBbc, RGBfc):
 
     # draw the background
     if RGBbc:
-        background_color = tuple(map(int, RGBbc.split(",")))
-        print(background_color)
+        background_color = RGBbc
+        #background_color = tuple(map(int, RGBbc.split(",")))
+        #print(background_color)
     else:
         background_color = (255,255,255)  # white
     #Plum: (221,160,221)
@@ -157,7 +168,8 @@ def textfile_to_image(textfile_path, RGBbc, RGBfc):
 
     # draw each line of text
     if RGBfc:
-        font_color = tuple(map(int, RGBfc.split(",")))
+        font_color = RGBfc
+        #font_color = tuple(map(int, RGBfc.split(",")))
     else:
         font_color = (0,0,0)  # black
     horizontal_position = margin_pixels
@@ -167,41 +179,128 @@ def textfile_to_image(textfile_path, RGBbc, RGBfc):
 
     return image
 
-
-def main():
-    
-    # Img to text
-    img_file = str(input("Enter path for input img file (.jpg, .png, etc): "))
-    text_file = (img_file.split('.'))[0]+'_ASCII.txt'
-    out_file = str(input('Enter path to out file or leave blank for "inputfile_ASCII": '))
-    if out_file == '':
-        out_file = img_file.split('.')[0]+'_ASCII.'+img_file.split('.')[1]
-    scale = 0.43
-    cols = int(input("Enter the number of columns: "))
-    ML = str(input("More levels? (y/n): "))
-    RGBvaluebackground = (input("Enter RGB background value, leave blank for white EX: ###,###,###: "))
-    RGBvaluetext = (input("Enter RGB text value, leave blank for black EX: ###,###,###: "))
-    if ML == "y":
-        moreLevels = True
+def open_file():
+    global my_img_file
+    if switch.get() == 0:
+        filenames = filedialog.askopenfilenames(initialdir='/', title='Select Files')
+        img_file_label = tk.Label(window, text=filenames).pack()
+        for my_img_file in filenames:
+            selected = ImageTk.PhotoImage(Image.open(my_img_file))
+            img_label = tk.Label(image=selected)
+            img_label.image = selected
+            img_label.pack()
+            #print(file)
+        return my_img_file
     else:
-        moreLevels = False
-    print('generating ASCII text file...')
-    aimg = covertImageToAscii(img_file, cols, scale, moreLevels)
+        directoryname = filedialog.askdirectory(initialdir='/')
+        directoryname_label = tk.Label(window, text=directoryname).pack()
+        return directoryname
+    
+
+def set_cols():
+    global col_val
+    col_val = slideval.get()
+    return col_val
+
+def set_BG_color():
+    global new_BG_tuple
+    new_color = colorchooser.askcolor()[0]
+    templist = []
+    if new_color:
+        for x in new_color:
+            y = round(x)
+            templist.append(y)
+        new_BG_tuple = tuple(templist)
+    return new_BG_tuple
+
+def set_FG_color():
+    global new_FG_tuple
+    new_color = colorchooser.askcolor()[0]
+    templist = []
+    
+    for x in new_color:
+        y = round(x)
+        templist.append(y)
+    new_FG_tuple = tuple(templist)
+    return new_FG_tuple
+
+def generate():
+    img_file=my_img_file
+    cols=col_val
+    #if new_FG_tuple:
+    RGBvaluetext=new_FG_tuple
+    #if new_BG_tuple:
+    RGBvaluebackground=new_BG_tuple
+    
+    now = datetime.now()
+    date_time = now.strftime('%m-%d-%Y_%H-%M-%S')
+
+    text_file = os.getcwd()+'/output/'+img_file.split('/')[-1].split('.')[0]+f'_ASCII_{date_time}.txt'
+    out_file = os.getcwd()+'/output/'+ img_file.split('/')[-1].split('.')[0]+f'_ASCII_{date_time}.'+img_file.split('.')[1]
+    
+    scale = 0.43
+    if ML_switch:
+        more_levels = True
+    else:
+        more_levels = False
+    aimg = covertImageToAscii(img_file, cols, scale, more_levels)
     f = open(text_file, 'w')
     for row in aimg:
         f.write(row + '\n')
     f.close()
-    print("ASCII text file written to %s" % text_file)
+    image = textfile_to_image(text_file, RGBvaluebackground, RGBvaluetext)
 
-    # Text to image
-    image = textfile_to_image(text_file, RGBvaluebackground, RGBvaluetext) 
-    print('generating ASCII image file...')
-    image.show()
+    
     image.save(out_file)
-    print("ASCII img file written to %s" % out_file)
+
+
+
+def main():
+    # Declare globals
+    global window, switch, slideval, ML_switch
+
+    # Main window
+    window = tk.Tk()
+    window.title('ASCII Image Converter')
+    window.geometry('400x400')
+
+    # Select files or folder
+    frame1 = tk.Frame(window, bg='grey')
+    frame1.pack(fill='x',)
+    switch = tk.IntVar()
+    switch.set(0)
+    open_file_Rb = tk.Radiobutton(frame1, text='File(s)', variable=switch, value = 0).pack(side='left')
+    open_folder_Rb = tk.Radiobutton(frame1, text='Folder', variable=switch, value=1).pack(side='left')
+    open_button = tk.Button(frame1, text='Open', command=open_file).pack(side='left')
+
+    # Select number of columns
+    frame2 = tk.Frame(window, bg='grey')
+    frame2.pack(fill='x',after=frame1)
+    slideval = tk.IntVar()
+    slideval.set(10)
+    col_slider = tk.Scale(frame2, from_=10, to=1500, orient='horizontal', length=200, variable=slideval).pack(side='left')
+    testbutton = tk.Button(frame2, text="Set\n Columns", command=set_cols).pack(side ='left')
+
+    # Select BG/FG colors
+    frame3 = tk.Frame(window, bg='grey')
+    frame3.pack(fill='x', after=frame2)
+    bg_color_button = tk.Button(frame3, text='Background\nColor', command=set_BG_color).pack(side='left')
+    fg_color_button = tk.Button(frame3, text='Foreground\nColor', command=set_FG_color).pack(side='left')
+
+    # More levels 
+    frame4 = tk.Frame(window, bg='grey')
+    frame4.pack(fill='x', after=frame3)
+    mL_label = tk.Label(frame4, text='More\n Levels?').pack(side='left')
+    ML_switch = tk.IntVar()
+    ML_switch.set(0)
+    ML_yes_RB = tk.Radiobutton(frame4, text='Yes', variable=ML_switch, value=0).pack(side='left', fill='y')
+    ML_no_RB = tk.Radiobutton(frame4, text='No', variable=ML_switch, value=1).pack(side='left', fill='y')
+
+    # Generate
+    generate_button = tk.Button(frame4, text='Generate', command=generate).pack(side='left', fill='y')
+    print(os.getcwd())
+
+    window.mainloop()
 
 if __name__ == '__main__':
     main()
-    
-
-
