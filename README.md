@@ -9,3 +9,8 @@
 - shows generated image
 - make sure you are in /ASCII> directory
 - added doc strings and comments
+## 8/22/2023
+- added selected directory feature
+- correctly generates multiple images
+- creates new folder in outputs by date
+- added restart button
