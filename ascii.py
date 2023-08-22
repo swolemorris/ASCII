@@ -1,4 +1,5 @@
 import math
+import sys
 import os
 import numpy as np
 import platform
@@ -50,7 +51,7 @@ def covertImageToAscii(fileName, cols, scale, moreLevels):
 
     # store dimensions
     W, H = image.size[0], image.size[1]
-    print("input image dims: %d x %d" % (W, H))
+    print("\tinput image dims: %d x %d" % (W, H))
 
     # compute width of tile
     w = W/cols
@@ -61,8 +62,8 @@ def covertImageToAscii(fileName, cols, scale, moreLevels):
     # compute number of rows
     rows = int(H/h)
     
-    print("cols: %d, rows: %d" % (cols, rows))
-    print("tile dims: %d x %d" % (w, h))
+    print("\tcols: %d, rows: %d" % (cols, rows))
+    print("\ttile dims: %d x %d" % (w, h))
 
     # check if image size is too small
     if cols > W or rows > H:
@@ -122,19 +123,20 @@ def textfile_to_image(textfile_path, RGBbc, RGBfc):
     with open(textfile_path) as f:
         lines = tuple(line.rstrip() for line in f.readlines())
 
-    # choose a font (you can see more detail in the linked library on github)
+    # choose a font
     font = None
     large_font = 20  # get better resolution with larger size
     for font_filename in COMMON_MONO_FONT_FILENAMES:
         try:
             font = ImageFont.truetype(font_filename, size=large_font)
-            print(f'Using font "{font_filename}".')
+            print(f'\tUsing font "{font_filename}".')
             break
         except IOError:
-            print(f'Could not load font "{font_filename}".')
+            pass
+            #print(f'\tCould not load font "{font_filename}".')
     if font is None:
         font = ImageFont.load_default()
-        print('Using default font.')
+        print('\tUsing default font.')
 
     # make a sufficiently sized background image based on the combination of font and lines
     font_points_to_pixels = lambda pt: round(pt * 96.0 / 72)
@@ -177,20 +179,61 @@ def open_file():
     Called when open file button is clicked
     Returns image below widget pannel along with file path
     """
-    global my_img_file
+    possible_image_files = ['jpg','JPG','JPEG','jpeg','rgb','gif','pbm','pgm','ppm','tiff','rast','xbm','bmp','png','webp','exr']
+    global filenames, img_file_label, display_frame
     if switch.get() == 0:
+
+        rloc = 0
+        cloc = 0
+
         filenames = filedialog.askopenfilenames(initialdir='/', title='Select Files')
+        filenames = [f for f in filenames if os.path.isfile(f)]
+        filenames = [f for f in filenames if f.split('.')[1] in possible_image_files]
         img_file_label = tk.Label(window, text=filenames).pack()
+        display_frame = tk.Frame(window)
+        display_frame.pack(expand=True)
         for my_img_file in filenames:
-            selected = ImageTk.PhotoImage(Image.open(my_img_file))
-            img_label = tk.Label(image=selected)
-            img_label.image = selected
-            img_label.pack()
-        return my_img_file
+            if len(filenames) > 3:
+                resized_img = Image.open(my_img_file).resize((200,200))
+                selected = ImageTk.PhotoImage(resized_img)
+                index = filenames.index(my_img_file)
+                cloc = index % 3
+                img_label = tk.Label(display_frame, image=selected)
+                img_label.image = selected
+                img_label.grid(row=rloc, column=cloc)
+                cloc += 1
+                if cloc == 3:
+                    rloc += 1
+        return filenames
     else:
+
+        rloc = 0
+        cloc = 0 
+
         directoryname = filedialog.askdirectory(initialdir='/')
         directoryname_label = tk.Label(window, text=directoryname).pack()
-        return directoryname
+        filenames = os.listdir(directoryname)
+        filenames = [f for f in filenames if os.path.isfile(directoryname+'/'+f)]
+        filenames = [f for f in filenames if f.split('.')[1] in possible_image_files]
+        filenames = [directoryname+'/'+f for f in filenames]
+        display_frame = tk.Frame(window)
+        display_frame.pack(expand=True)
+        for my_img_file in filenames:
+            if len(filenames) > 3:
+                resized_img = Image.open(my_img_file).resize((200,200))
+                selected = ImageTk.PhotoImage(resized_img)
+                index = filenames.index(my_img_file)
+                cloc = index % 3
+                img_label = tk.Label(display_frame, image=selected)
+                img_label.image = selected
+                img_label.grid(row=rloc, column=cloc)
+                cloc += 1
+                if cloc == 3:
+                    rloc += 1
+        return filenames
+
+        
+        
     
 
 def set_BG_color():
@@ -231,38 +274,56 @@ def generate():
     """
 
     # Assign variables
-    img_file=my_img_file
-    cols=slideval.get()
-    RGBvaluetext=new_FG_tuple
-    RGBvaluebackground=new_BG_tuple
-    
-    # Create new file name
-    now = datetime.now()
-    date_time = now.strftime('%m-%d-%Y_%H-%M-%S')
-    text_file = os.getcwd()+'/output/'+img_file.split('/')[-1].split('.')[0]+f'_ASCII_{date_time}.txt'
-    out_file = os.getcwd()+'/output/'+ img_file.split('/')[-1].split('.')[0]+f'_ASCII_{date_time}.'+img_file.split('.')[1]
-    
-    # place holder
-    scale = 0.43
-    # registers more levels option
-    if ML_switch.get() == 0:
-        more_levels = True
-    else:
-        more_levels = False
+    for my_img_file in filenames:
+        print(f'\nConverting image ({filenames.index(my_img_file)+1}/{len(filenames)})')
+        img_file=my_img_file
+        cols=slideval.get()
+        RGBvaluetext=new_FG_tuple
+        RGBvaluebackground=new_BG_tuple
 
-    # Convert image to ascii text file
-    aimg = covertImageToAscii(img_file, cols, scale, more_levels)
-    f = open(text_file, 'w')
-    for row in aimg:
-        f.write(row + '\n')
-    f.close()
+        # Create new folder with current date if not already existing
+        now = datetime.now()
+        folder_name = now.strftime('%Y-%m-%d')
+        folder_path = os.getcwd()+'/output/'+folder_name
+        folder_exists = os.path.exists(folder_path)
+        if folder_exists:
+            output_path = folder_path+'/'
+        else:
+            os.makedirs(folder_path)
+            print(f'New folder created {folder_path}')
+            output_path = folder_path+'/'
+        
+        # Create new file name
+        date_time = now.strftime('%Y-%m-%d_%H-%M-%S')
+        text_file = output_path+img_file.split('/')[-1].split('.')[0]+f'_ASCII_{date_time}.txt'
+        out_file = output_path+img_file.split('/')[-1].split('.')[0]+f'_ASCII_{date_time}.'+img_file.split('.')[1]
+        
+        # place holder
+        scale = 0.43
+        # registers more levels option
+        if ML_switch.get() == 0:
+            more_levels = True
+        else:
+            more_levels = False
 
-    # Convert ascii text file to image file
-    image = textfile_to_image(text_file, RGBvaluebackground, RGBvaluetext)
-    image.show()
-    image.save(out_file)
-    print(f'ASCII image generated to {out_file}')
+        # Convert image to ascii text file
+        aimg = covertImageToAscii(img_file, cols, scale, more_levels)
+        f = open(text_file, 'w')
+        for row in aimg:
+            f.write(row + '\n')
+        f.close()
 
+        # Convert ascii text file to image file
+        image = textfile_to_image(text_file, RGBvaluebackground, RGBvaluetext)
+        image.show()
+        image.save(out_file)
+        print(f'ASCII image generated to {out_file}')
+    print('Process completed')
+
+def restart():
+    print('\nRestarting...')
+    python = sys.executable
+    os.execl(python, python, * sys.argv)
 
 
 def main():
@@ -272,7 +333,7 @@ def main():
     # Main window
     window = tk.Tk()
     window.title('ASCII Image Converter')
-    window.geometry('400x400')
+    window.geometry('600x600')
 
     # Select files or folder
     frame1 = tk.Frame(window, bg='grey')
@@ -308,6 +369,8 @@ def main():
     # Generate
     generate_button = tk.Button(frame4, text='Generate', command=generate).pack(side='left', fill='y')
 
+    #Clear
+    clear_button = tk.Button(frame4, text='Restart', command=restart).pack(side='right', fill='y')
     window.mainloop()
 
 if __name__ == '__main__':
