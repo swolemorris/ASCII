@@ -30,7 +30,7 @@ def getAverageL(image):
     im = np.array(image)
 
     # get shape
-    w,h = im.shape
+    h,w = im.shape
 
     # get average
     return np.average(im.reshape(w*h))
@@ -44,7 +44,7 @@ def covertImageToAscii(fileName, cols, scale, moreLevels):
     if platform.system() == 'Darwin':
         scale = 0.475
     elif platform.system() == 'Windows':
-        scale = 0.572
+        scale = (.572*(1/(1.5/(7564/5240))))
 
     # open image and convert to grayscale
     image = Image.open(fileName).convert('L')
@@ -189,21 +189,20 @@ def open_file():
         filenames = filedialog.askopenfilenames(initialdir='/', title='Select Files')
         filenames = [f for f in filenames if os.path.isfile(f)]
         filenames = [f for f in filenames if f.split('.')[1] in possible_image_files]
-        img_file_label = tk.Label(window, text=filenames).pack()
+        img_file_label = tk.Label(window, text='Files\n' + '\n'.join(filenames)).pack()
         display_frame = tk.Frame(window)
         display_frame.pack(expand=True)
         for my_img_file in filenames:
-            if len(filenames) > 3:
-                resized_img = Image.open(my_img_file).resize((200,200))
-                selected = ImageTk.PhotoImage(resized_img)
-                index = filenames.index(my_img_file)
-                cloc = index % 3
-                img_label = tk.Label(display_frame, image=selected)
-                img_label.image = selected
-                img_label.grid(row=rloc, column=cloc)
-                cloc += 1
-                if cloc == 3:
-                    rloc += 1
+            resized_img = Image.open(my_img_file).resize((200,200))
+            selected = ImageTk.PhotoImage(resized_img)
+            index = filenames.index(my_img_file)
+            cloc = index % 3
+            img_label = tk.Label(display_frame, image=selected)
+            img_label.image = selected
+            img_label.grid(row=rloc, column=cloc)
+            cloc += 1
+            if cloc == 3:
+                rloc += 1
         return filenames
     else:
 
@@ -219,17 +218,16 @@ def open_file():
         display_frame = tk.Frame(window)
         display_frame.pack(expand=True)
         for my_img_file in filenames:
-            if len(filenames) > 3:
-                resized_img = Image.open(my_img_file).resize((200,200))
-                selected = ImageTk.PhotoImage(resized_img)
-                index = filenames.index(my_img_file)
-                cloc = index % 3
-                img_label = tk.Label(display_frame, image=selected)
-                img_label.image = selected
-                img_label.grid(row=rloc, column=cloc)
-                cloc += 1
-                if cloc == 3:
-                    rloc += 1
+            resized_img = Image.open(my_img_file).resize((200,200))
+            selected = ImageTk.PhotoImage(resized_img)
+            index = filenames.index(my_img_file)
+            cloc = index % 3
+            img_label = tk.Label(display_frame, image=selected)
+            img_label.image = selected
+            img_label.grid(row=rloc, column=cloc)
+            cloc += 1
+            if cloc == 3:
+                rloc += 1
         return filenames
 
         
@@ -284,19 +282,19 @@ def generate():
         # Create new folder with current date if not already existing
         now = datetime.now()
         folder_name = now.strftime('%Y-%m-%d')
-        folder_path = os.getcwd()+'/output/'+folder_name
+        folder_path = os.path.join(os.getcwd(),'output',folder_name)
         folder_exists = os.path.exists(folder_path)
         if folder_exists:
-            output_path = folder_path+'/'
+            output_path = folder_path
         else:
             os.makedirs(folder_path)
             print(f'New folder created {folder_path}')
-            output_path = folder_path+'/'
+            output_path = folder_path
         
         # Create new file name
         date_time = now.strftime('%Y-%m-%d_%H-%M-%S')
-        text_file = output_path+img_file.split('/')[-1].split('.')[0]+f'_ASCII_{date_time}.txt'
-        out_file = output_path+img_file.split('/')[-1].split('.')[0]+f'_ASCII_{date_time}.'+img_file.split('.')[1]
+        text_file = os.path.join(output_path, img_file.split('/')[-1].split('.')[0] + f'_ASCII_{date_time}.txt')
+        out_file = os.path.join(output_path, img_file.split('/')[-1].split('.')[0]+f'_ASCII_{date_time}.'+img_file.split('.')[1])
         
         # place holder
         scale = 0.43
@@ -348,7 +346,7 @@ def main():
     frame2 = tk.Frame(window, bg='grey')
     frame2.pack(fill='x',after=frame1)
     slideval = tk.IntVar()
-    slideval.set(10)
+    slideval.set(200)
     col_slider = tk.Scale(frame2, from_=10, to=1500, orient='horizontal', length=200, variable=slideval).pack(side='left')
 
     # Select BG/FG colors
@@ -360,16 +358,16 @@ def main():
     # More levels 
     frame4 = tk.Frame(window, bg='grey')
     frame4.pack(fill='x', after=frame3)
-    mL_label = tk.Label(frame4, text='More\n Levels?').pack(side='left')
+    #mL_label = tk.Label(frame4, text='Image\n Quality').pack(side='left')
     ML_switch = tk.IntVar()
     ML_switch.set(0)
-    ML_yes_RB = tk.Radiobutton(frame4, text='Yes', variable=ML_switch, value=0).pack(side='left', fill='y')
-    ML_no_RB = tk.Radiobutton(frame4, text='No', variable=ML_switch, value=1).pack(side='left', fill='y')
+    ML_yes_RB = tk.Radiobutton(frame4, text='Detailed', variable=ML_switch, value=0).pack(side='left', fill='y')
+    ML_no_RB = tk.Radiobutton(frame4, text='High Contrast', variable=ML_switch, value=1).pack(side='left', fill='y')
 
     # Generate
     generate_button = tk.Button(frame4, text='Generate', command=generate).pack(side='left', fill='y')
 
-    #Clear
+    #Restart
     clear_button = tk.Button(frame4, text='Restart', command=restart).pack(side='right', fill='y')
     window.mainloop()
 
