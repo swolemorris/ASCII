@@ -4,7 +4,7 @@ import os
 import numpy as np
 import platform
 import tkinter as tk
-from tkinter import filedialog, colorchooser
+from tkinter import filedialog, colorchooser, messagebox
 from PIL import Image, ImageTk, ImageFont, ImageDraw
 from datetime import datetime
 
@@ -35,7 +35,7 @@ def getAverageL(image):
     # get average
     return np.average(im.reshape(w*h))
 
-def covertImageToAscii(fileName, cols, scale, moreLevels):
+def covertImageToAscii(fileName, cols, moreLevels):
     """
     Given Image and dims (rows, cols) returns an m*n list of Images
     """
@@ -271,52 +271,69 @@ def generate():
     Returns generated image.
     """
 
-    # Assign variables
-    for my_img_file in filenames:
-        print(f'\nConverting image ({filenames.index(my_img_file)+1}/{len(filenames)})')
-        img_file=my_img_file
-        cols=slideval.get()
-        RGBvaluetext=new_FG_tuple
-        RGBvaluebackground=new_BG_tuple
+    # Make output folders if they dont exist
+    if not os.path.exists(os.path.join(os.getcwd(),'output')):
+        os.makedirs(os.path.join(os.getcwd(),'output'))
+        print('Making ASCII/output/...')
+    if not os.path.exists(os.path.join(os.getcwd(),'output','text')):
+        os.makedirs(os.path.join(os.getcwd(),'output','text'))
+        print('Making ASCII/output/text/...')
+    if not os.path.exists(os.path.join(os.getcwd(),'output','img')):
+        os.makedirs(os.path.join(os.getcwd(),'output','img'))
+        print('Making ASCII/output/img/...')
 
-        # Create new folder with current date if not already existing
-        now = datetime.now()
-        folder_name = now.strftime('%Y-%m-%d')
-        folder_path = os.path.join(os.getcwd(),'output',folder_name)
-        folder_exists = os.path.exists(folder_path)
-        if folder_exists:
-            output_path = folder_path
-        else:
-            os.makedirs(folder_path)
-            print(f'New folder created {folder_path}')
-            output_path = folder_path
+
+    # See if img is selected
+    try:
+        # Assign variables
+        for img_file in filenames:
+            print(f'\nConverting image ({filenames.index(img_file)+1}/{len(filenames)})')
+            cols=slideval.get()
+            RGBvaluetext=new_FG_tuple
+            RGBvaluebackground=new_BG_tuple
+
+            # Create new directory with current date inside text and img directoreis if not already existing
+            now = datetime.now()
+            folder_name = now.strftime('%Y-%m-%d')
+
+            text_folder_path = os.path.join(os.getcwd(),'output','text',folder_name)
+            if not os.path.exists(text_folder_path):
+                os.makedirs(text_folder_path)
+                print(f'New folder created {text_folder_path}...')
+
+            img_folder_path = os.path.join(os.getcwd(),'output','img',folder_name)
+            if not os.path.exists(img_folder_path):
+                os.makedirs(img_folder_path)
+                print(f'New folder created {img_folder_path}...')
+            
+            # Create new file name
+            date_time = now.strftime('%Y-%m-%d_%H-%M-%S')
+            text_file = os.path.join(text_folder_path, img_file.split('/')[-1].split('.')[0] + f'_ASCII_{date_time}.txt')
+            out_file = os.path.join(img_folder_path, img_file.split('/')[-1].split('.')[0]+f'_ASCII_{date_time}.'+img_file.split('.')[1])
+            
+            # registers more levels option
+            if ML_switch.get() == 0:
+                more_levels = True
+            else:
+                more_levels = False
+
+            # Convert image to ascii text file
+            aimg = covertImageToAscii(img_file, cols, more_levels)
+            f = open(text_file, 'w')
+            for row in aimg:
+                f.write(row + '\n')
+            f.close()
+
+            # Convert ascii text file to image file
+            image = textfile_to_image(text_file, RGBvaluebackground, RGBvaluetext)
+            image.show()
+            image.save(out_file)
+            print(f'ASCII image generated to {out_file}')
+        print('Process completed')
+    except NameError:
+        print('No image selected')
+        messagebox.showerror('Error', 'Select image or folder of images')
         
-        # Create new file name
-        date_time = now.strftime('%Y-%m-%d_%H-%M-%S')
-        text_file = os.path.join(output_path, img_file.split('/')[-1].split('.')[0] + f'_ASCII_{date_time}.txt')
-        out_file = os.path.join(output_path, img_file.split('/')[-1].split('.')[0]+f'_ASCII_{date_time}.'+img_file.split('.')[1])
-        
-        # place holder
-        scale = 0.43
-        # registers more levels option
-        if ML_switch.get() == 0:
-            more_levels = True
-        else:
-            more_levels = False
-
-        # Convert image to ascii text file
-        aimg = covertImageToAscii(img_file, cols, scale, more_levels)
-        f = open(text_file, 'w')
-        for row in aimg:
-            f.write(row + '\n')
-        f.close()
-
-        # Convert ascii text file to image file
-        image = textfile_to_image(text_file, RGBvaluebackground, RGBvaluetext)
-        image.show()
-        image.save(out_file)
-        print(f'ASCII image generated to {out_file}')
-    print('Process completed')
 
 def restart():
     print('\nRestarting...')

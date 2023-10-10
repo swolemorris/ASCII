@@ -1,5 +1,7 @@
 # ASCII
-
+## 10/10/2023
+- generates output folders automatically
+- display error message when no file selected
 ## 8/29/2023
 - fixed less than 3 image display bug
 - default slide val set to 200
